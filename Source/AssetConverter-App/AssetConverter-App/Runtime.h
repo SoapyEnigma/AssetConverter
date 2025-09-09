@@ -18,6 +18,7 @@ public:
         fs::path map;
         fs::path mapObject;
         fs::path complexModel;
+        fs::path audio;
     };
 
 public:
