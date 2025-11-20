@@ -42,6 +42,7 @@ i32 main()
             paths.texture = paths.data / "Texture";
             paths.textureBlendMap = paths.texture / "blendmaps";
             paths.map = paths.data / "Map";
+            paths.navMesh = paths.data / "NavMesh";
             paths.mapObject = paths.data / "MapObject";
             paths.complexModel = paths.data / "ComplexModel";
 
@@ -50,13 +51,14 @@ i32 main()
             fs::create_directories(paths.texture);
             fs::create_directories(paths.textureBlendMap);
             fs::create_directories(paths.map);
+            fs::create_directories(paths.navMesh);
             fs::create_directories(paths.mapObject);
             fs::create_directories(paths.complexModel);
         }
 
         // Setup Json
         {
-            static const std::string CONFIG_VERSION = "0.4";
+            static const std::string CONFIG_VERSION = "0.5";
             static const std::string CONFIG_NAME = "AssetConverterConfig.json";
 
             fs::path configPath = runtime->paths.executable / CONFIG_NAME;
@@ -67,7 +69,7 @@ i32 main()
             bool configExists = fs::exists(configPath);
             if (!configExists)
             {
-                NC_LOG_CRITICAL("[AssetConverter] Please copy the {0} to this folder.\n\nPress 'Enter' to exit.", CONFIG_NAME);
+                NC_LOG_CRITICAL("[AssetConverter] Please copy {0} to this folder.\n\nPress 'Enter' to exit.", CONFIG_NAME);
             }
 
             if (!JsonUtils::LoadFromPathOrCreate(runtime->json, fallbackJson, configPath))

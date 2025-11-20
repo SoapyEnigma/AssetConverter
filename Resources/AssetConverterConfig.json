@@ -1,6 +1,6 @@
 {
     "General": {
-        "Version": "0.4",
+        "Version": "0.5",
         "ThreadCount": -1,
         "DebugMode": false
     },
@@ -15,6 +15,7 @@
         },
         "Map": {
             "Enabled": true,
+            "NavMesh": true,
             "BlendMaps": true
         },
         "MapObject": {

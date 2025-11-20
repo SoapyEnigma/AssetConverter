@@ -16,6 +16,7 @@ public:
         fs::path texture;
         fs::path textureBlendMap;
         fs::path map;
+        fs::path navMesh;
         fs::path mapObject;
         fs::path complexModel;
     };

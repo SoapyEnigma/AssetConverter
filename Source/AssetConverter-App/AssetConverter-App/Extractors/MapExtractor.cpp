@@ -28,11 +28,197 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
 
+#include <Recast/Recast.h>
+#include <Detour/DetourNavMesh.h>
+#include <Detour/DetourNavMeshBuilder.h>
+#include <Detour/DetourNavMeshQuery.h>
+
 #include <tracy/Tracy.hpp>
 
 #include <string_view>
 
 using namespace ClientDB;
+
+struct NavMeshBuilder
+{
+public:
+    rcContext ctx{};
+    rcConfig cfg{};
+    rcHeightfield* solid{ nullptr };
+    rcCompactHeightfield* chf{ nullptr };
+    rcContourSet* cset{ nullptr };
+    rcPolyMesh* pmesh{ nullptr };
+    rcPolyMeshDetail* dmesh{ nullptr };
+    dtNavMesh* navMesh{ nullptr };
+
+    ~NavMeshBuilder()
+    {
+        Cleanup();
+    }
+
+    bool Build(std::string& path, u16 chunkX, u16 chunkY, const f32* verts, i32 vertCount, const i32* tris, i32 triCount, vec3& bmin, vec3& bmax)
+    {
+        Cleanup();
+        memset(&cfg, 0, sizeof(cfg));
+
+        cfg.cs = 0.3333f;
+        cfg.ch = 0.3333f;
+        cfg.walkableSlopeAngle = 70.0f;
+        cfg.walkableHeight = 2;
+        cfg.walkableClimb = 2;
+        cfg.walkableRadius = 2;
+
+        cfg.borderSize = 8;
+        cfg.tileSize = 64;
+        cfg.maxEdgeLen = 16;
+        cfg.maxSimplificationError = 1.3f;
+        cfg.minRegionArea = rcSqr(20);
+        cfg.mergeRegionArea = rcSqr(40);
+        cfg.maxVertsPerPoly = 6;
+        cfg.detailSampleDist = cfg.cs * 4.0f;
+        cfg.detailSampleMaxError = cfg.ch * 1.0f;
+
+        rcVcopy(cfg.bmin, &bmin.x);
+        rcVcopy(cfg.bmax, &bmax.x);
+
+        rcCalcGridSize(cfg.bmin, cfg.bmax, cfg.cs, &cfg.width, &cfg.height);
+
+        if (cfg.width == 0 || cfg.height == 0)
+            return false;
+
+        solid = rcAllocHeightfield();
+        rcCreateHeightfield(&ctx, *solid, cfg.width, cfg.height, cfg.bmin, cfg.bmax, cfg.cs, cfg.ch);
+
+        std::vector<u8> areas(triCount, RC_WALKABLE_AREA);
+        rcMarkWalkableTriangles(&ctx, cfg.walkableSlopeAngle, verts, vertCount, tris, triCount, areas.data());
+        rcRasterizeTriangles(&ctx, verts, vertCount, tris, areas.data(), triCount, *solid, cfg.walkableClimb);
+
+        rcFilterLowHangingWalkableObstacles(&ctx, cfg.walkableClimb, *solid);
+        rcFilterLedgeSpans(&ctx, cfg.walkableHeight, cfg.walkableClimb, *solid);
+        rcFilterWalkableLowHeightSpans(&ctx, cfg.walkableHeight, *solid);
+
+        chf = rcAllocCompactHeightfield();
+        rcBuildCompactHeightfield(&ctx, cfg.walkableHeight, cfg.walkableClimb, *solid, *chf);
+
+        rcErodeWalkableArea(&ctx, cfg.walkableRadius, *chf);
+        rcBuildDistanceField(&ctx, *chf);
+        rcBuildRegions(&ctx, *chf, 0, cfg.minRegionArea, cfg.mergeRegionArea);
+
+        cset = rcAllocContourSet();
+        rcBuildContours(&ctx, *chf, cfg.maxSimplificationError, cfg.maxEdgeLen, *cset);
+
+        pmesh = rcAllocPolyMesh();
+        rcBuildPolyMesh(&ctx, *cset, cfg.maxVertsPerPoly, *pmesh);
+
+        if (!pmesh || pmesh->npolys == 0)
+            return false;
+
+        for (i32 i = 0; i < pmesh->npolys; i++)
+        {
+            const u8 areaID = pmesh->areas[i];
+
+            if (areaID != RC_WALKABLE_AREA)
+                continue;
+
+            pmesh->flags[i] |= 0x1;
+        }
+
+        dmesh = rcAllocPolyMeshDetail();
+        rcBuildPolyMeshDetail(&ctx, *pmesh, *chf, cfg.detailSampleDist, cfg.detailSampleMaxError, *dmesh);
+
+        if (!dmesh || dmesh->nmeshes == 0)
+            return false;
+
+        u8* navData = nullptr;
+        i32 navDataSize = 0;
+
+        dtNavMeshCreateParams params{};
+        params.verts = pmesh->verts;
+        params.vertCount = pmesh->nverts;
+        params.polys = pmesh->polys;
+        params.polyAreas = pmesh->areas;
+        params.polyFlags = pmesh->flags;
+        params.polyCount = pmesh->npolys;
+        params.nvp = pmesh->nvp;
+        params.detailMeshes = dmesh->meshes;
+        params.detailVerts = dmesh->verts;
+        params.detailVertsCount = dmesh->nverts;
+        params.detailTris = dmesh->tris;
+        params.detailTriCount = dmesh->ntris;
+        rcVcopy(params.bmin, &bmin.x);
+        rcVcopy(params.bmax, &bmax.x);
+        params.walkableHeight = 2.0f;
+        params.walkableRadius = 0.6f;
+        params.walkableClimb = 0.9f;
+        params.cs = cfg.cs;
+        params.ch = cfg.ch;
+        params.buildBvTree = true;
+
+        i32 tileX = chunkX - 32;
+        i32 tileY = chunkY - 32;
+        params.tileX = tileX;
+        params.tileY = tileY;
+
+        if (!dtCreateNavMeshData(&params, &navData, &navDataSize))
+            return false;
+
+        if (navDataSize == 0)
+            return false;
+
+        navMesh = dtAllocNavMesh();
+        if (dtStatusFailed(navMesh->init(navData, navDataSize, DT_TILE_FREE_DATA)))
+            return false;
+
+        std::ofstream output(path, std::ofstream::out | std::ofstream::binary);
+        if (!output)
+            return false;
+
+        // Write the Navmesh to file
+        output.write(reinterpret_cast<const char*>(navData), navDataSize);
+        output.close();
+
+        return true;
+    }
+    
+    void Cleanup()
+    {
+        if (solid)
+        {
+            rcFreeHeightField(solid);
+            solid = nullptr;
+        }
+
+        if (chf)
+        {
+            rcFreeCompactHeightfield(chf);
+            chf = nullptr;
+        }
+
+        if (cset)
+        {
+            rcFreeContourSet(cset);
+            cset = nullptr;
+        }
+
+        if (pmesh)
+        {
+            rcFreePolyMesh(pmesh);
+            pmesh = nullptr;
+        }
+
+        if (dmesh)
+        {
+            rcFreePolyMeshDetail(dmesh);
+            dmesh = nullptr;
+        }
+
+        if (navMesh)
+        {
+            dtFreeNavMesh(navMesh);
+            navMesh = nullptr;
+        }
+    }
+};
 
 vec2 GetCellVertexPosition(u32 cellID, u32 vertexID)
 {
@@ -62,6 +248,7 @@ void MapExtractor::Process()
     Runtime* runtime = ServiceLocator::GetRuntime();
     CascLoader* cascLoader = ServiceLocator::GetCascLoader();
 
+    bool createChunkNavmesh = runtime->json["Extraction"]["Map"]["NavMesh"];
     bool createChunkAlphaMaps = runtime->json["Extraction"]["Map"]["BlendMaps"];
 
     auto& mapStorage = ClientDBExtractor::mapStorage;
@@ -71,6 +258,7 @@ void MapExtractor::Process()
     mapStorage.Each([&](const u32 id, const Generated::MapRecord& map) -> bool
     {
         ZoneScopedN("MapExtractor::Process::Each");
+
         const std::string& internalName = mapStorage.GetString(map.nameInternal);
 
         static char formatBuffer[512] = { 0 };
@@ -99,6 +287,10 @@ void MapExtractor::Process()
         }
 
         std::filesystem::create_directories(runtime->paths.map / internalName);
+        if (createChunkNavmesh)
+        {
+            std::filesystem::create_directories(runtime->paths.navMesh / internalName);
+        }
 
         Map::MapHeader mapHeader = { };
         mapHeader.flags.UseMapObjectAsBase = wdt.mphd.flags.UseGlobalMapObj;
@@ -143,21 +335,22 @@ void MapExtractor::Process()
         {
             std::filesystem::create_directories(runtime->paths.textureBlendMap / internalName);
 
-            enki::TaskSet convertMapTask(Terrain::CHUNK_NUM_PER_MAP, [&runtime, &cascLoader, &map, &wdt, &internalName, createChunkAlphaMaps, id](enki::TaskSetPartition range, uint32_t threadNum)
+            enki::TaskSet convertMapTask(Terrain::CHUNK_NUM_PER_MAP, [&runtime, &cascLoader, &map, &wdt, &internalName, createChunkNavmesh, createChunkAlphaMaps, id](enki::TaskSetPartition range, uint32_t threadNum)
             {
                 ZoneScopedN("MapExtractor::Process::Each::ConvertMapTask");
                 Adt::Parser adtParser = { };
+                NavMeshBuilder navMeshBuilder = { };
 
                 for (u32 chunkID = range.start; chunkID < range.end; chunkID++)
                 {
-                    u32 chunkGridPosX = chunkID % 64;
-                    u32 chunkGridPosY = chunkID / 64;
+                    u32 originalChunkGridPosX = chunkID % 64;
+                    u32 originalChunkGridPosY = chunkID / 64;
 
-                    const Adt::MAIN::AreaInfo& areaInfo = wdt.main.areaInfos[chunkGridPosX][chunkGridPosY];
+                    const Adt::MAIN::AreaInfo& areaInfo = wdt.main.areaInfos[originalChunkGridPosX][originalChunkGridPosY];
                     if (!areaInfo.flags.IsUsed)
                         continue;
 
-                    const Adt::MAID::FileIDs& fileIDs = wdt.maid.fileIDs[chunkGridPosX][chunkGridPosY];
+                    const Adt::MAID::FileIDs& fileIDs = wdt.maid.fileIDs[originalChunkGridPosX][originalChunkGridPosY];
                     if (fileIDs.adtRootFileID == 0 || fileIDs.adtTextureFileID == 0 || fileIDs.adtObject1FileID == 0)
                         continue;
 
@@ -168,11 +361,15 @@ void MapExtractor::Process()
                     if (!rootBuffer)
                         continue;
 
+                    u32 chunkGridPosX = chunkID / 64;
+                    u32 chunkGridPosY = chunkID % 64;
+                    u32 newChunkID = chunkGridPosX + (chunkGridPosY * Terrain::CHUNK_NUM_PER_MAP_STRIDE);
+
                     ZoneScopedN("MapExtractor::Process::Each::ConvertMapTask::Convert");
                     Adt::Layout adt = { };
                     {
                         adt.mapID = id;
-                        adt.chunkID = chunkID;
+                        adt.chunkID = newChunkID;
                     }
 
                     Adt::Parser::Context context = { };
@@ -395,8 +592,10 @@ void MapExtractor::Process()
 
                             JPH::VertexList vertexList;
                             JPH::IndexedTriangleList triangleList;
+                            std::vector<u32> indices;
                             vertexList.reserve(numVerticesPerChunk);
                             triangleList.reserve(numTrianglePerChunk);
+                            indices.reserve(numTrianglePerChunk);
 
                             u32 patchVertexIDs[5] = { 0 };
                             vec2 patchVertexOffsets[5] =
@@ -475,6 +674,10 @@ void MapExtractor::Process()
                                         continue;
 
                                     triangleList.push_back({ vertexID3, vertexID2, vertexID1 });
+
+                                    indices.push_back(vertexID3);
+                                    indices.push_back(vertexID2);
+                                    indices.push_back(vertexID1);
                                 }
                             }
 
@@ -493,6 +696,33 @@ void MapExtractor::Process()
                             {
                                 physicsData.resize(joltChunkBuffer->writtenData);
                                 memcpy(&physicsData[0], joltChunkBuffer->GetDataPointer(), joltChunkBuffer->writtenData);
+                            }
+
+                            u32 numVertices = static_cast<u32>(vertexList.size());
+                            if (createChunkNavmesh && (numVertices > 0 && indices.size() > 0))
+                            {
+                                vec3 bmin = vec3(0.0f);
+                                vec3 bmax = vec3(0.0f);
+
+                                vec2 chunkWorldOffset = -Terrain::MAP_HALF_SIZE + (vec2(chunkGridPosX, chunkGridPosY) * Terrain::CHUNK_SIZE);
+
+                                for (u32 i = 0; i < numVertices; i++)
+                                {
+                                    auto& vertex = vertexList[i];
+
+                                    vertex.x += chunkWorldOffset.x;
+                                    vertex.z *= -1.0f;
+                                    vertex.z += chunkWorldOffset.y;
+                                }
+
+                                rcCalcBounds(reinterpret_cast<const f32*>(vertexList.data()), static_cast<i32>(vertexList.size()), &bmin.x, &bmax.x);
+
+                                std::string localChunkPath = internalName + "/" + internalName + "_" + std::to_string(chunkGridPosX) + "_" + std::to_string(chunkGridPosY) + ".nav";
+                                std::string chunkOutputPath = (runtime->paths.navMesh / localChunkPath).string();
+                                if (!navMeshBuilder.Build(chunkOutputPath, chunkGridPosX, chunkGridPosY, reinterpret_cast<const f32*>(vertexList.data()), static_cast<i32>(vertexList.size()), reinterpret_cast<const i32*>(indices.data()), static_cast<i32>(indices.size() / 3), bmin, bmax))
+                                {
+                                    NC_LOG_ERROR("[Map Extractor] Failed to generate NavMesh for Map Tile ({}_{}_{})", internalName, chunkGridPosX, chunkGridPosY);
+                                }
                             }
                         }
 
