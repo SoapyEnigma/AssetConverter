@@ -26,6 +26,9 @@
         },
         "Texture": {
             "Enabled": true
+        },
+        "Audio": {
+            "Enabled":  true
         }
     }
 }

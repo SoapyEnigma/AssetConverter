@@ -6,6 +6,7 @@
 #include "Extractors/MapObjectExtractor.h"
 #include "Extractors/ComplexModelExtractor.h"
 #include "Extractors/TextureExtractor.h"
+#include "Extractors/AudioExtractor.h"
 #include "Util/ServiceLocator.h"
 
 #include <Base/Types.h>
@@ -45,6 +46,7 @@ i32 main()
             paths.navMesh = paths.data / "NavMesh";
             paths.mapObject = paths.data / "MapObject";
             paths.complexModel = paths.data / "ComplexModel";
+            paths.audio = paths.data / "Audio";
 
             fs::create_directories(paths.data);
             fs::create_directories(paths.clientDB);
@@ -54,6 +56,7 @@ i32 main()
             fs::create_directories(paths.navMesh);
             fs::create_directories(paths.mapObject);
             fs::create_directories(paths.complexModel);
+            fs::create_directories(paths.audio);
         }
 
         // Setup Json
@@ -172,6 +175,15 @@ i32 main()
                         NC_LOG_INFO("[AssetConverter] Processing Texture Extractor...");
                         TextureExtractor::Process();
                         NC_LOG_INFO("[AssetConverter] Texture Extractor Finished\n");
+                    }
+
+                    // Audio
+                    bool isAudioEnabled = runtime->json["Extraction"]["Audio"]["Enabled"];
+                    if (isAudioEnabled)
+                    {
+                        NC_LOG_INFO("[AssetConverter] Processing Audio Extractor...");
+                        AudioExtractor::Process();
+                        NC_LOG_INFO("[AssetConverter] Audio Extractor Finished\n");
                     }
                 }
 

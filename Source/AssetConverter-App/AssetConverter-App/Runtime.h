@@ -19,6 +19,7 @@ public:
         fs::path navMesh;
         fs::path mapObject;
         fs::path complexModel;
+        fs::path audio;
     };
 
 public:
