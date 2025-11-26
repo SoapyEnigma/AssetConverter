@@ -38,7 +38,7 @@ namespace Audio
         }
 
         ma_uint64 totalFrames;
-        ma_decoder_get_available_frames(&decoder, &totalFrames);
+        ma_decoder_get_length_in_pcm_frames(&decoder, &totalFrames);
 
         ma_uint32 frameSizeInBytes = ma_get_bytes_per_frame(decoder.outputFormat, decoder.outputChannels);
 
