@@ -15,32 +15,37 @@ namespace Audio
         result = ma_decoder_init_memory(data, size, nullptr, &decoder);
         if (result != MA_SUCCESS)
         {
-            NC_LOG_WARNING("Decoder init failed for '%s' (miniaudio error: %d)\n",
-                outPath.c_str(), (u32)result, size);
+            NC_LOG_WARNING("Decoder init failed with error '{}' for '{}'",
+                (i16)result, outPath);
 
             return;
         }
+
+        if (decoder.outputFormat == ma_encoding_format_wav)
+            return;
 
         ma_encoder_config encoderConfig = ma_encoder_config_init(ma_encoding_format_wav, decoder.outputFormat, decoder.outputChannels, decoder.outputSampleRate);
 
         result = ma_encoder_init_file(outPath.c_str(), &encoderConfig, &encoder);
         if (result != MA_SUCCESS)
         {
-            NC_LOG_WARNING("Encoder init failed for '%s' (miniaudio error: %d)\n",
-                outPath.c_str(), (u32)result);
+            NC_LOG_WARNING("Encoder init failed with erro '{}' for '{}'",
+                (i16)result, outPath);
 
             ma_decoder_uninit(&decoder);
 
             return;
         }
 
-        ma_uint32 framesPerChunk = 4096;
+        ma_uint64 totalFrames;
+        ma_decoder_get_available_frames(&decoder, &totalFrames);
+
         ma_uint32 frameSizeInBytes = ma_get_bytes_per_frame(decoder.outputFormat, decoder.outputChannels);
 
-        void* frameBuffer = malloc((size_t)framesPerChunk * frameSizeInBytes);
+        void* frameBuffer = malloc(totalFrames * frameSizeInBytes);
         if (frameBuffer == nullptr)
         {
-            NC_LOG_WARNING("Out of memory in ConvertToWav for '%s'\n", outPath.c_str());
+            NC_LOG_WARNING("frameBuffer is null for '{}'", outPath);
 
             ma_encoder_uninit(&encoder);
             ma_decoder_uninit(&decoder);
@@ -48,29 +53,19 @@ namespace Audio
             return;
         }
 
-        for (;;)
+        ma_uint64 framesRead;
+        result = ma_decoder_read_pcm_frames(&decoder, frameBuffer, totalFrames, &framesRead);
+        if (result != MA_SUCCESS && result != MA_AT_END)
         {
-            ma_uint64 framesRead = 0;
-            result = ma_decoder_read_pcm_frames(&decoder, frameBuffer, framesPerChunk, &framesRead);
-            if (result != MA_SUCCESS && result != MA_AT_END)
-            {
-                NC_LOG_WARNING("Decode error for '%s' (miniaudio error: %d)\n",
-                outPath.c_str(), (u32)result);
+            NC_LOG_WARNING("Decode error '{}' for '{}'",
+                (i16)result, outPath);
+        }
 
-                break;
-            }
-
-            if (framesRead == 0)
-                break;
-
-            result = ma_encoder_write_pcm_frames(&encoder, frameBuffer, framesRead, NULL);
-            if (result != MA_SUCCESS)
-            {
-                NC_LOG_WARNING("Encode error for '%s' (miniaudio error: %d)\n",
-                outPath.c_str(), (u32)result);
-
-                break;
-            }
+        result = ma_encoder_write_pcm_frames(&encoder, frameBuffer, framesRead, nullptr);
+        if (result != MA_SUCCESS)
+        {
+            NC_LOG_WARNING("Encode error '{}' for '{}'",
+                (i16)result, outPath);
         }
 
         free(frameBuffer);
