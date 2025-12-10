@@ -16,7 +16,7 @@
 #include <FileFormat/Novus/ClientDB/ClientDB.h>
 #include <FileFormat/Novus/Model/ComplexModel.h>
 
-#include <Meta/Generated/Shared/ClientDB.h>
+#include <MetaGen/Shared/ClientDB/ClientDB.h>
 
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -174,7 +174,7 @@ bool ClientDBExtractor::ExtractModelFileData(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    modelFileDataStorage.Initialize<Generated::ModelFileDataRecord>();
+    modelFileDataStorage.Initialize<MetaGen::Shared::ClientDB::ModelFileDataRecord>();
     modelFileDataStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -186,7 +186,7 @@ bool ClientDBExtractor::ExtractModelFileData(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::ModelFileDataRecord modelFileData;
+        MetaGen::Shared::ClientDB::ModelFileDataRecord modelFileData;
         u32 modelFileID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 0);
         modelFileData.flags = db2Parser.GetField<u8>(layout, sectionID, recordID, recordData, 1);
         modelFileData.modelResourcesID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 3);
@@ -206,7 +206,7 @@ bool ClientDBExtractor::ExtractModelFileData(const std::string& name)
         modelFileDataStorage.Replace(db2RecordIndex + 1, modelFileData);
     }
 
-    RepopulateFromCopyTable<Generated::ModelFileDataRecord>(layout, modelFileDataStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::ModelFileDataRecord>(layout, modelFileDataStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!modelFileDataStorage.Save(path))
@@ -228,7 +228,7 @@ bool ClientDBExtractor::ExtractTextureFileData(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    textureFileDataStorage.Initialize<Generated::TextureFileDataRecord>();
+    textureFileDataStorage.Initialize<MetaGen::Shared::ClientDB::TextureFileDataRecord>();
     textureFileDataStorage.Reserve(header.recordCount);
     materialResourcesIDToTextureFileDataEntry.reserve(header.recordCount * 2);
 
@@ -241,7 +241,7 @@ bool ClientDBExtractor::ExtractTextureFileData(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::TextureFileDataRecord textureFileData;
+        MetaGen::Shared::ClientDB::TextureFileDataRecord textureFileData;
         u32 id = db2RecordIndex + 1;
 
         u32 textureFileID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 0);
@@ -262,7 +262,7 @@ bool ClientDBExtractor::ExtractTextureFileData(const std::string& name)
         textureFileDataStorage.Replace(id, textureFileData);
     }
 
-    RepopulateFromCopyTable<Generated::TextureFileDataRecord>(layout, textureFileDataStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::TextureFileDataRecord>(layout, textureFileDataStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!textureFileDataStorage.Save(path))
@@ -284,7 +284,7 @@ bool ClientDBExtractor::ExtractMap(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    mapStorage.Initialize<Generated::MapRecord>();
+    mapStorage.Initialize<MetaGen::Shared::ClientDB::MapRecord>();
     mapStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -305,7 +305,7 @@ bool ClientDBExtractor::ExtractMap(const std::string& name)
         bool hasWDTFile = fileID > 0 && cascLoader->InCascAndListFile(fileID);
         if (hasWDTFile)
         {
-            Generated::MapRecord map = { };
+            MetaGen::Shared::ClientDB::MapRecord map = { };
 
             std::string internalName = GetStringFromRecordIndex(layout, db2Parser, db2RecordIndex, 0);;
             std::string mapName = GetStringFromRecordIndex(layout, db2Parser, db2RecordIndex, 1);
@@ -329,7 +329,7 @@ bool ClientDBExtractor::ExtractMap(const std::string& name)
         }
     }
 
-    RepopulateFromCopyTable<Generated::MapRecord>(layout, mapStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::MapRecord>(layout, mapStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!mapStorage.Save(path))
@@ -351,7 +351,7 @@ bool ClientDBExtractor::ExtractLiquidObject(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    liquidObjectStorage.Initialize<Generated::LiquidObjectRecord>();
+    liquidObjectStorage.Initialize<MetaGen::Shared::ClientDB::LiquidObjectRecord>();
     liquidObjectStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -363,14 +363,14 @@ bool ClientDBExtractor::ExtractLiquidObject(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::LiquidObjectRecord liquidObject;
+        MetaGen::Shared::ClientDB::LiquidObjectRecord liquidObject;
         liquidObject.liquidTypeID = db2Parser.GetField<u16>(layout, sectionID, recordID, recordData, 2);
         liquidObject.fishable = db2Parser.GetField<u8>(layout, sectionID, recordID, recordData, 3);
 
         liquidObjectStorage.Replace(recordID, liquidObject);
     }
 
-    RepopulateFromCopyTable<Generated::LiquidObjectRecord>(layout, liquidObjectStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::LiquidObjectRecord>(layout, liquidObjectStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!liquidObjectStorage.Save(path))
@@ -391,7 +391,7 @@ bool ClientDBExtractor::ExtractLiquidType(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    liquidTypeStorage.Initialize<Generated::LiquidTypeRecord>();
+    liquidTypeStorage.Initialize<MetaGen::Shared::ClientDB::LiquidTypeRecord>();
     liquidTypeStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -403,7 +403,7 @@ bool ClientDBExtractor::ExtractLiquidType(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::LiquidTypeRecord liquidType;
+        MetaGen::Shared::ClientDB::LiquidTypeRecord liquidType;
         liquidType.name = liquidTypeStorage.AddString(GetStringFromRecordIndex(layout, db2Parser, db2RecordIndex, 0));
 
         for (u32 textureIndex = 0; textureIndex < 6; textureIndex++)
@@ -437,7 +437,7 @@ bool ClientDBExtractor::ExtractLiquidType(const std::string& name)
         liquidTypeStorage.Replace(recordID, liquidType);
     }
 
-    RepopulateFromCopyTable<Generated::LiquidTypeRecord>(layout, liquidTypeStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::LiquidTypeRecord>(layout, liquidTypeStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!liquidTypeStorage.Save(path))
@@ -458,7 +458,7 @@ bool ClientDBExtractor::ExtractLiquidMaterial(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    liquidMaterialStorage.Initialize<Generated::LiquidMaterialRecord>();
+    liquidMaterialStorage.Initialize<MetaGen::Shared::ClientDB::LiquidMaterialRecord>();
     liquidMaterialStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -470,14 +470,14 @@ bool ClientDBExtractor::ExtractLiquidMaterial(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::LiquidMaterialRecord liquidMaterial;
+        MetaGen::Shared::ClientDB::LiquidMaterialRecord liquidMaterial;
         liquidMaterial.flags = db2Parser.GetField<u8>(layout, sectionID, recordID, recordData, 0);
         liquidMaterial.liquidVertexFormat = db2Parser.GetField<u8>(layout, sectionID, recordID, recordData, 1);
 
         liquidMaterialStorage.Replace(recordID, liquidMaterial);
     }
 
-    RepopulateFromCopyTable<Generated::LiquidMaterialRecord>(layout, liquidMaterialStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::LiquidMaterialRecord>(layout, liquidMaterialStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!liquidMaterialStorage.Save(path))
@@ -499,7 +499,7 @@ bool ClientDBExtractor::ExtractCinematicCamera(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    cinematicCameraStorage.Initialize<Generated::CinematicCameraRecord>();
+    cinematicCameraStorage.Initialize<MetaGen::Shared::ClientDB::CinematicCameraRecord>();
     cinematicCameraStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -511,7 +511,7 @@ bool ClientDBExtractor::ExtractCinematicCamera(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::CinematicCameraRecord cinematicCamera;
+        MetaGen::Shared::ClientDB::CinematicCameraRecord cinematicCamera;
         const vec3* endPosition = db2Parser.GetFieldPtr<vec3>(layout, sectionID, recordID, recordData, 0);
         cinematicCamera.endPosition = CoordinateSpaces::CinematicCameraPosToNovus(*endPosition);
         cinematicCamera.soundID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 1);
@@ -529,7 +529,7 @@ bool ClientDBExtractor::ExtractCinematicCamera(const std::string& name)
         cinematicCameraStorage.Replace(recordID, cinematicCamera);
     }
 
-    RepopulateFromCopyTable<Generated::CinematicCameraRecord>(layout, cinematicCameraStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::CinematicCameraRecord>(layout, cinematicCameraStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!cinematicCameraStorage.Save(path))
@@ -550,7 +550,7 @@ bool ClientDBExtractor::ExtractCinematicSequence(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    cinematicSequenceStorage.Initialize<Generated::CinematicSequenceRecord>();
+    cinematicSequenceStorage.Initialize<MetaGen::Shared::ClientDB::CinematicSequenceRecord>();
     cinematicSequenceStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -562,14 +562,14 @@ bool ClientDBExtractor::ExtractCinematicSequence(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::CinematicSequenceRecord cinematicSequence;
+        MetaGen::Shared::ClientDB::CinematicSequenceRecord cinematicSequence;
         const u16* cameraIDs = db2Parser.GetFieldPtr<u16>(layout, sectionID, recordID, recordData, 1);
         cinematicSequence.cameraID = cameraIDs[0];
 
         cinematicSequenceStorage.Replace(recordID, cinematicSequence);
     }
 
-    RepopulateFromCopyTable<Generated::CinematicSequenceRecord>(layout, cinematicSequenceStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::CinematicSequenceRecord>(layout, cinematicSequenceStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!cinematicSequenceStorage.Save(path))
@@ -591,7 +591,7 @@ bool ClientDBExtractor::ExtractAnimationData(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    animationDataStorage.Initialize<Generated::AnimationDataRecord>();
+    animationDataStorage.Initialize<MetaGen::Shared::ClientDB::AnimationDataRecord>();
     animationDataStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -603,7 +603,7 @@ bool ClientDBExtractor::ExtractAnimationData(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::AnimationDataRecord animationData;
+        MetaGen::Shared::ClientDB::AnimationDataRecord animationData;
         animationData.fallback = db2Parser.GetField<u16>(layout, sectionID, recordID, recordData, 0);
         animationData.behaviorTier = db2Parser.GetField<u8>(layout, sectionID, recordID, recordData, 1);
         animationData.behaviorID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 2);
@@ -614,7 +614,7 @@ bool ClientDBExtractor::ExtractAnimationData(const std::string& name)
         animationDataStorage.Replace(recordID, animationData);
     }
 
-    RepopulateFromCopyTable<Generated::AnimationDataRecord>(layout, animationDataStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::AnimationDataRecord>(layout, animationDataStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!animationDataStorage.Save(path))
@@ -636,7 +636,7 @@ bool ClientDBExtractor::ExtractCreatureModelData(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    creatureModelDataStorage.Initialize<Generated::CreatureModelDataRecord>();
+    creatureModelDataStorage.Initialize<MetaGen::Shared::ClientDB::CreatureModelDataRecord>();
     creatureModelDataStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -648,7 +648,7 @@ bool ClientDBExtractor::ExtractCreatureModelData(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::CreatureModelDataRecord creatureModelData;
+        MetaGen::Shared::ClientDB::CreatureModelDataRecord creatureModelData;
         const Geometry::AABoundingBox* boundingBox = db2Parser.GetFieldPtr<Geometry::AABoundingBox>(layout, sectionID, recordID, recordData, 0);
         creatureModelData.boxMin = boundingBox->center;
         creatureModelData.boxMax = boundingBox->extents;
@@ -681,7 +681,7 @@ bool ClientDBExtractor::ExtractCreatureModelData(const std::string& name)
         creatureModelDataStorage.Replace(recordID, creatureModelData);
     }
 
-    RepopulateFromCopyTable<Generated::CreatureModelDataRecord>(layout, creatureModelDataStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::CreatureModelDataRecord>(layout, creatureModelDataStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!creatureModelDataStorage.Save(path))
@@ -702,7 +702,7 @@ bool ClientDBExtractor::ExtractCreatureDisplayInfo(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    creatureDisplayInfoStorage.Initialize<Generated::CreatureDisplayInfoRecord>();
+    creatureDisplayInfoStorage.Initialize<MetaGen::Shared::ClientDB::CreatureDisplayInfoRecord>();
     creatureDisplayInfoStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -714,7 +714,7 @@ bool ClientDBExtractor::ExtractCreatureDisplayInfo(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::CreatureDisplayInfoRecord creatureDisplayInfo;
+        MetaGen::Shared::ClientDB::CreatureDisplayInfoRecord creatureDisplayInfo;
         recordID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 0);
         creatureDisplayInfo.modelID = db2Parser.GetField<u16>(layout, sectionID, recordID, recordData, 1);
         creatureDisplayInfo.soundID = db2Parser.GetField<u16>(layout, sectionID, recordID, recordData, 2);
@@ -751,7 +751,7 @@ bool ClientDBExtractor::ExtractCreatureDisplayInfo(const std::string& name)
         creatureDisplayInfoStorage.Replace(recordID, creatureDisplayInfo);
     }
 
-    RepopulateFromCopyTable<Generated::CreatureDisplayInfoRecord>(layout, creatureDisplayInfoStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::CreatureDisplayInfoRecord>(layout, creatureDisplayInfoStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!creatureDisplayInfoStorage.Save(path))
@@ -772,7 +772,7 @@ bool ClientDBExtractor::ExtractCreatureDisplayInfoExtra(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    creatureDisplayInfoExtraStorage.Initialize<Generated::CreatureDisplayInfoExtraRecord>();
+    creatureDisplayInfoExtraStorage.Initialize<MetaGen::Shared::ClientDB::CreatureDisplayInfoExtraRecord>();
     creatureDisplayInfoExtraStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -784,7 +784,7 @@ bool ClientDBExtractor::ExtractCreatureDisplayInfoExtra(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::CreatureDisplayInfoExtraRecord creatureDisplayInfoExtra;
+        MetaGen::Shared::ClientDB::CreatureDisplayInfoExtraRecord creatureDisplayInfoExtra;
         recordID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 0);
         creatureDisplayInfoExtra.raceID = db2Parser.GetField<i8>(layout, sectionID, recordID, recordData, 1);
         creatureDisplayInfoExtra.gender = db2Parser.GetField<i8>(layout, sectionID, recordID, recordData, 2) + 1;
@@ -802,7 +802,7 @@ bool ClientDBExtractor::ExtractCreatureDisplayInfoExtra(const std::string& name)
         {
             u32 textureFileDataID = materialResourcesIDToTextureFileDataEntry[bakedMaterialResourcesID][0];
             
-            auto& textureFileData = textureFileDataStorage.Get<Generated::TextureFileDataRecord>(textureFileDataID);
+            auto& textureFileData = textureFileDataStorage.Get<MetaGen::Shared::ClientDB::TextureFileDataRecord>(textureFileDataID);
             filePath = textureFileDataStorage.GetString(textureFileData.texture);
         }
         creatureDisplayInfoExtra.bakedTexture = creatureDisplayInfoExtraStorage.AddString(filePath.string());
@@ -811,7 +811,7 @@ bool ClientDBExtractor::ExtractCreatureDisplayInfoExtra(const std::string& name)
         creatureDisplayInfoExtraStorage.Replace(recordID, creatureDisplayInfoExtra, didOverride);
     }
 
-    RepopulateFromCopyTable<Generated::CreatureDisplayInfoExtraRecord>(layout, creatureDisplayInfoExtraStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::CreatureDisplayInfoExtraRecord>(layout, creatureDisplayInfoExtraStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!creatureDisplayInfoExtraStorage.Save(path))
@@ -833,7 +833,7 @@ bool ClientDBExtractor::ExtractItemDisplayMaterialResources(const std::string& n
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    itemDisplayMaterialResourcesStorage.Initialize<Generated::ItemDisplayInfoMaterialResourceRecord>();
+    itemDisplayMaterialResourcesStorage.Initialize<MetaGen::Shared::ClientDB::ItemDisplayInfoMaterialResourceRecord>();
     itemDisplayMaterialResourcesStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -845,7 +845,7 @@ bool ClientDBExtractor::ExtractItemDisplayMaterialResources(const std::string& n
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::ItemDisplayInfoMaterialResourceRecord itemDisplayMaterialResource;
+        MetaGen::Shared::ClientDB::ItemDisplayInfoMaterialResourceRecord itemDisplayMaterialResource;
         itemDisplayMaterialResource.displayInfoID = 0;
         u8 componentSection = db2Parser.GetField<u8>(layout, sectionID, recordID, recordData, 0);
         itemDisplayMaterialResource.materialResourcesID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 1);
@@ -918,11 +918,11 @@ bool ClientDBExtractor::ExtractItemDisplayMaterialResources(const std::string& n
         DB2::WDC3::Layout::RelationshipMapEntry* relationshipEntry = layout.sections[0].relationshipMap.entries + i;
 
         u32 rowID = *(layout.sections[0].idListData + relationshipEntry->recordIndex);
-        auto& itemDisplayMaterialResource = itemDisplayMaterialResourcesStorage.Get<Generated::ItemDisplayInfoMaterialResourceRecord>(rowID);
+        auto& itemDisplayMaterialResource = itemDisplayMaterialResourcesStorage.Get<MetaGen::Shared::ClientDB::ItemDisplayInfoMaterialResourceRecord>(rowID);
         itemDisplayMaterialResource.displayInfoID = relationshipEntry->foreignID;
     }
 
-    RepopulateFromCopyTable<Generated::ItemDisplayInfoMaterialResourceRecord>(layout, itemDisplayMaterialResourcesStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::ItemDisplayInfoMaterialResourceRecord>(layout, itemDisplayMaterialResourcesStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!itemDisplayMaterialResourcesStorage.Save(path))
@@ -943,7 +943,7 @@ bool ClientDBExtractor::ExtractItemDisplayModelMaterialResources(const std::stri
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    itemDisplayModelMaterialResourcesStorage.Initialize<Generated::ItemDisplayInfoModelMaterialResourceRecord>();
+    itemDisplayModelMaterialResourcesStorage.Initialize<MetaGen::Shared::ClientDB::ItemDisplayInfoModelMaterialResourceRecord>();
     itemDisplayModelMaterialResourcesStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -955,7 +955,7 @@ bool ClientDBExtractor::ExtractItemDisplayModelMaterialResources(const std::stri
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::ItemDisplayInfoModelMaterialResourceRecord itemDisplayModelMaterialResource;
+        MetaGen::Shared::ClientDB::ItemDisplayInfoModelMaterialResourceRecord itemDisplayModelMaterialResource;
         itemDisplayModelMaterialResource.displayInfoID = 0;
         itemDisplayModelMaterialResource.modelIndex = static_cast<u8>(db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 2));
         itemDisplayModelMaterialResource.textureType = static_cast<u8>(db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 1));
@@ -969,11 +969,11 @@ bool ClientDBExtractor::ExtractItemDisplayModelMaterialResources(const std::stri
         DB2::WDC3::Layout::RelationshipMapEntry* relationshipEntry = layout.sections[0].relationshipMap.entries + i;
 
         u32 rowID = *(layout.sections[0].idListData + relationshipEntry->recordIndex);
-        auto& itemDisplayModelMaterialResource = itemDisplayModelMaterialResourcesStorage.Get<Generated::ItemDisplayInfoModelMaterialResourceRecord>(rowID);
+        auto& itemDisplayModelMaterialResource = itemDisplayModelMaterialResourcesStorage.Get<MetaGen::Shared::ClientDB::ItemDisplayInfoModelMaterialResourceRecord>(rowID);
         itemDisplayModelMaterialResource.displayInfoID = relationshipEntry->foreignID;
     }
 
-    RepopulateFromCopyTable<Generated::ItemDisplayInfoModelMaterialResourceRecord>(layout, itemDisplayModelMaterialResourcesStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::ItemDisplayInfoModelMaterialResourceRecord>(layout, itemDisplayModelMaterialResourcesStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!itemDisplayModelMaterialResourcesStorage.Save(path))
@@ -994,7 +994,7 @@ bool ClientDBExtractor::ExtractItemDisplayInfo(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    itemDisplayInfoStorage.Initialize<Generated::ItemDisplayInfoRecord>();
+    itemDisplayInfoStorage.Initialize<MetaGen::Shared::ClientDB::ItemDisplayInfoRecord>();
     itemDisplayInfoStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -1006,7 +1006,7 @@ bool ClientDBExtractor::ExtractItemDisplayInfo(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::ItemDisplayInfoRecord itemDisplayInfo;
+        MetaGen::Shared::ClientDB::ItemDisplayInfoRecord itemDisplayInfo;
 
         itemDisplayInfo.itemRangedDisplayInfoID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 3);
         itemDisplayInfo.flags = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 9);
@@ -1034,7 +1034,7 @@ bool ClientDBExtractor::ExtractItemDisplayInfo(const std::string& name)
         itemDisplayInfoStorage.Replace(recordID, itemDisplayInfo);
     }
 
-    RepopulateFromCopyTable<Generated::ItemDisplayInfoRecord>(layout, itemDisplayInfoStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::ItemDisplayInfoRecord>(layout, itemDisplayInfoStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!itemDisplayInfoStorage.Save(path))
@@ -1056,7 +1056,7 @@ bool ClientDBExtractor::ExtractLight(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    lightStorage.Initialize<Generated::LightRecord>();
+    lightStorage.Initialize<MetaGen::Shared::ClientDB::LightRecord>();
     lightStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -1068,7 +1068,7 @@ bool ClientDBExtractor::ExtractLight(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::LightRecord light;
+        MetaGen::Shared::ClientDB::LightRecord light;
         light.mapID = db2Parser.GetField<u16>(layout, sectionID, recordID, recordData, 3);
 
         vec3 position = *db2Parser.GetFieldPtr<vec3>(layout, sectionID, recordID, recordData, 0);
@@ -1082,7 +1082,7 @@ bool ClientDBExtractor::ExtractLight(const std::string& name)
         lightStorage.Replace(recordID, light);
     }
 
-    RepopulateFromCopyTable<Generated::LightRecord>(layout, lightStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::LightRecord>(layout, lightStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!lightStorage.Save(path))
@@ -1103,7 +1103,7 @@ bool ClientDBExtractor::ExtractLightParams(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    lightParamsStorage.Initialize<Generated::LightParamRecord>();
+    lightParamsStorage.Initialize<MetaGen::Shared::ClientDB::LightParamRecord>();
     lightParamsStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -1115,21 +1115,21 @@ bool ClientDBExtractor::ExtractLightParams(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::LightParamRecord lightParam;
+        MetaGen::Shared::ClientDB::LightParamRecord lightParam;
         recordID = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 1);
         bool highlightSky = db2Parser.GetField<u8>(layout, sectionID, recordID, recordData, 2);
         lightParam.flags = 1 << 0 * highlightSky;
         lightParam.lightSkyboxID = db2Parser.GetField<u16>(layout, sectionID, recordID, recordData, 3);
         lightParam.glow = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 5);
-        lightParam.riverShallowAlpha = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 6);
-        lightParam.riverDeepAlpha = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 7);
-        lightParam.oceanShallowAlpha = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 8);
-        lightParam.oceanDeepAlpha = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 9);
+        lightParam.riverAlphas[0] = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 6);
+        lightParam.riverAlphas[1] = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 7);
+        lightParam.oceanAlphas[0] = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 8);
+        lightParam.oceanAlphas[1] = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 9);
 
         lightParamsStorage.Replace(db2RecordIndex, lightParam);
     }
 
-    RepopulateFromCopyTable<Generated::LightParamRecord>(layout, lightParamsStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::LightParamRecord>(layout, lightParamsStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!lightParamsStorage.Save(path))
@@ -1150,7 +1150,7 @@ bool ClientDBExtractor::ExtractLightData(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    lightDataStorage.Initialize<Generated::LightDataRecord>();
+    lightDataStorage.Initialize<MetaGen::Shared::ClientDB::LightDataRecord>();
     lightDataStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -1162,30 +1162,30 @@ bool ClientDBExtractor::ExtractLightData(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::LightDataRecord lightData;
+        MetaGen::Shared::ClientDB::LightDataRecord lightData;
         lightData.lightParamID = db2Parser.GetField<u16>(layout, sectionID, recordID, recordData, 0);
         u16 timestamp = db2Parser.GetField<u16>(layout, sectionID, recordID, recordData, 1);
         lightData.timestamp = static_cast<u32>(timestamp) * 30;
         lightData.diffuseColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 2);
         lightData.ambientColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 3);
-        lightData.skyTopColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 4);
-        lightData.skyMiddleColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 5);
-        lightData.skyBand1Color = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 6);
-        lightData.skyBand2Color = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 7);
-        lightData.skySmogColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 8);
-        lightData.skyFogColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 9);
+        lightData.skyColors[0] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 4);
+        lightData.skyColors[1] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 5);
+        lightData.skyColors[2] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 6);
+        lightData.skyColors[3] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 7);
+        lightData.skyColors[4] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 8);
+        lightData.skyColors[5] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 9);
         lightData.sunColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 10);
         lightData.sunFogColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 38);
         lightData.sunFogStrength = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 39);
         lightData.sunFogAngle = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 29);
-        lightData.cloudSunColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 11);
-        lightData.cloudEmissiveColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 12);
-        lightData.cloudLayer1AmbientColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 13);
-        lightData.cloudLayer2AmbientColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 14);
-        lightData.oceanShallowColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 15);
-        lightData.oceanDeepColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 16);
-        lightData.riverShallowColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 17);
-        lightData.riverDeepColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 18);
+        lightData.cloudColors[0] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 11);
+        lightData.cloudColors[1] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 12);
+        lightData.cloudColors[2] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 13);
+        lightData.cloudColors[3] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 14);
+        lightData.oceanColors[0] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 15);
+        lightData.oceanColors[1] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 16);
+        lightData.riverColors[0] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 17);
+        lightData.riverColors[1] = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 18);
         lightData.shadowColor = db2Parser.GetField<u32>(layout, sectionID, recordID, recordData, 19);
         lightData.fogEnd = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 20) / 36;
         lightData.fogScaler = db2Parser.GetField<f32>(layout, sectionID, recordID, recordData, 21);
@@ -1198,7 +1198,7 @@ bool ClientDBExtractor::ExtractLightData(const std::string& name)
         lightDataStorage.Replace(recordID, lightData);
     }
 
-    RepopulateFromCopyTable<Generated::LightDataRecord>(layout, lightDataStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::LightDataRecord>(layout, lightDataStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!lightDataStorage.Save(path))
@@ -1219,7 +1219,7 @@ bool ClientDBExtractor::ExtractLightSkybox(const std::string& name)
 
     const DB2::WDC3::Layout::Header& header = layout.header;
 
-    lightSkyboxStorage.Initialize<Generated::LightSkyboxRecord>();
+    lightSkyboxStorage.Initialize<MetaGen::Shared::ClientDB::LightSkyboxRecord>();
     lightSkyboxStorage.Reserve(header.recordCount);
 
     for (u32 db2RecordIndex = 0; db2RecordIndex < header.recordCount; db2RecordIndex++)
@@ -1231,7 +1231,7 @@ bool ClientDBExtractor::ExtractLightSkybox(const std::string& name)
         if (!db2Parser.TryReadRecord(layout, db2RecordIndex, sectionID, recordID, recordData))
             continue;
 
-        Generated::LightSkyboxRecord lightSkybox;
+        MetaGen::Shared::ClientDB::LightSkyboxRecord lightSkybox;
 
         fs::path filePath = "";
 
@@ -1263,7 +1263,7 @@ bool ClientDBExtractor::ExtractLightSkybox(const std::string& name)
         lightSkyboxStorage.Replace(recordID, lightSkybox);
     }
 
-    RepopulateFromCopyTable<Generated::LightSkyboxRecord>(layout, lightSkyboxStorage);
+    RepopulateFromCopyTable<MetaGen::Shared::ClientDB::LightSkyboxRecord>(layout, lightSkyboxStorage);
 
     std::string path = (ServiceLocator::GetRuntime()->paths.clientDB / name).replace_extension(ClientDB::FILE_EXTENSION).string();
     if (!lightSkyboxStorage.Save(path))

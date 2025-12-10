@@ -18,7 +18,7 @@
 #include <FileFormat/Warcraft/Parsers/WdtParser.h>
 #include <FileFormat/Warcraft/Parsers/AdtParser.h>
 
-#include <Meta/Generated/Shared/ClientDB.h>
+#include <MetaGen/Shared/ClientDB/ClientDB.h>
 
 #include <enkiTS/TaskScheduler.h>
 #include <glm/gtx/euler_angles.inl>
@@ -255,7 +255,7 @@ void MapExtractor::Process()
     u32 numMapEntries = mapStorage.GetNumRows();
     NC_LOG_INFO("[Map Extractor] Processing {0} maps", numMapEntries);
 
-    mapStorage.Each([&](const u32 id, const Generated::MapRecord& map) -> bool
+    mapStorage.Each([&](const u32 id, const MetaGen::Shared::ClientDB::MapRecord& map) -> bool
     {
         ZoneScopedN("MapExtractor::Process::Each");
 
@@ -400,7 +400,7 @@ void MapExtractor::Process()
 
                                     if (liquidObjects.Has(liquidVertexFormat))
                                     {
-                                        auto& liquidObject = liquidObjects.Get<Generated::LiquidObjectRecord>(liquidVertexFormat);
+                                        auto& liquidObject = liquidObjects.Get<MetaGen::Shared::ClientDB::LiquidObjectRecord>(liquidVertexFormat);
                                         liquidTypeID = liquidObject.liquidTypeID;
                                     }
                                     else
@@ -410,11 +410,11 @@ void MapExtractor::Process()
 
                                     if (liquidTypes.Has(liquidTypeID))
                                     {
-                                        auto& liquidType = liquidTypes.Get<Generated::LiquidTypeRecord>(liquidTypeID);
+                                        auto& liquidType = liquidTypes.Get<MetaGen::Shared::ClientDB::LiquidTypeRecord>(liquidTypeID);
 
                                         if (liquidMaterials.Has(liquidType.materialID))
                                         {
-                                            auto& liquidMaterial = liquidMaterials.Get<Generated::LiquidMaterialRecord>(liquidType.materialID);
+                                            auto& liquidMaterial = liquidMaterials.Get<MetaGen::Shared::ClientDB::LiquidMaterialRecord>(liquidType.materialID);
                                             liquidVertexFormat = liquidMaterial.liquidVertexFormat;
                                         }
                                     }
