@@ -5,13 +5,14 @@ Solution.Util.CreateConsoleApp(mod.Name, Solution.Projects.Current.BinDir, mod.D
 
     Solution.Util.SetLanguage("C++")
     Solution.Util.SetCppDialect(20)
-  
-    local files = Solution.Util.GetFilesForCpp(mod.Path .. "/AssetConverter-App")
+
+    local projFile = mod.Path .. "/" .. mod.Name .. ".lua"
+    local files = Solution.Util.GetFilesForCpp(mod.Path)
+    table.insert(files, projFile)
+
     Solution.Util.SetFiles(files)
     Solution.Util.SetIncludes(mod.Path)
     Solution.Util.SetDefines(defines)
-    
-    vpaths { ["**"] = "**.*" }
     
     Solution.Util.SetFilter("system:Windows", function()
         local appIconFiles =
@@ -20,6 +21,10 @@ Solution.Util.CreateConsoleApp(mod.Name, Solution.Projects.Current.BinDir, mod.D
             "**.ico"
         }
         Solution.Util.SetFiles(appIconFiles)
-        vpaths { ['Resources/*'] = { '*.rc', '**.ico' } }
     end)
+    
+    vpaths {
+        ['Resources/*'] = { '*.rc', '**.ico' },
+        ["/*"] = { "*.lua", mod.Name .. "/**" }
+    }
 end)
